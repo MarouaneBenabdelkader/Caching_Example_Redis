@@ -1,12 +1,13 @@
-package org.example.models;
+package org.example.dao;
 
+import org.example.models.Client;
 import redis.clients.jedis.Jedis;
 
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CachedDataManager {
+public class CachedDataManagerSql implements CachedDataManagerDao {
     private  Jedis jedis;
     private Client cachedClient;
     private Statement statement;
@@ -15,7 +16,7 @@ public class CachedDataManager {
     static final private String url = "jdbc:mysql://localhost:3306/bigdata";
     static final private String username = "root";
     static final private String password = "";
-    public CachedDataManager() {
+    public CachedDataManagerSql() {
         this.jedis = new Jedis("localhost", 6379);
         connectToMySql();
     }
@@ -29,7 +30,9 @@ public class CachedDataManager {
             throw new IllegalStateException("Cannot connect the database!", e);
         }
     }
-    public void SelectClientFromMySqlDB_And_AddItToRedisDB(String no_client) {
+
+    @Override
+    public void selectClientFromMySqlDB_And_AddItToRedisDB(String no_client) {
         try {
             // Mesure du temps pour la récupération depuis MySQL
             long startTimeSql = System.currentTimeMillis();
@@ -78,6 +81,7 @@ public class CachedDataManager {
             e.printStackTrace();
         }
     }
+    @Override
     public void fetchClientFromRedisDataBase(String clientKey) {
         Map<String, String> mapcl = jedis.hgetAll(clientKey);
         if (!mapcl.isEmpty()) {
@@ -103,7 +107,8 @@ public class CachedDataManager {
             System.out.println("Client not found in Redis with key: " + clientKey);
         }
     }
-    public void UseCacheData(String clientKey) {
+    @Override
+    public void useCacheData(String clientKey) {
         if (cachedClient == null) {
             fetchClientFromRedisDataBase(clientKey);
         } else {
@@ -114,17 +119,19 @@ public class CachedDataManager {
                     ", adresse=" + cachedClient.getAdress() + "}");
         }
     }
-    public void DataSelector(String clientId) {
+    @Override
+    public void dataSelector(String clientId) {
         String clientKey = "client:" + clientId; // La clé sous laquelle les données du client sont stockées dans Redis
 
         // Essayer d'utiliser les données en cache
-        UseCacheData(clientKey);
+        useCacheData(clientKey);
 
         // Si les données du client ne sont pas en cache, les sélectionner de MySQL et les ajouter à Redis
         if (cachedClient == null) {
-            SelectClientFromMySqlDB_And_AddItToRedisDB(clientId);
+            selectClientFromMySqlDB_And_AddItToRedisDB(clientId);
         }
     }
+    @Override
     public void closeConnection() {
         try {
             if (connection != null) {
