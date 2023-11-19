@@ -8,10 +8,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class CachedDataManagerSql implements CachedDataManagerDao {
-    private  Jedis jedis;
+    private final   Jedis jedis;
     private Client cachedClient;
-    private Statement statement;
-    private ResultSet resultSet;
     private Connection connection;
     static final private String url = "jdbc:mysql://localhost:3306/bigdata";
     static final private String username = "root";
@@ -36,7 +34,7 @@ public class CachedDataManagerSql implements CachedDataManagerDao {
         try {
             // Mesure du temps pour la récupération depuis MySQL
             long startTimeSql = System.currentTimeMillis();
-
+            ResultSet resultSet;
             // Sélection des données du client depuis la base de données MySQL
             String sqlQuery = "SELECT * FROM client WHERE no_client = ?";
             PreparedStatement pstmt = connection.prepareStatement(sqlQuery);
@@ -54,7 +52,7 @@ public class CachedDataManagerSql implements CachedDataManagerDao {
                 // Stockage dans Redis
                 jedis.hset("client:" + no_client, hash);
             }
-
+            cachedClient = null;
             long stopTimeSql = System.currentTimeMillis();
             long elapsedTimeSql = stopTimeSql - startTimeSql;
 
@@ -130,6 +128,7 @@ public class CachedDataManagerSql implements CachedDataManagerDao {
         if (cachedClient == null) {
             selectClientFromMySqlDB_And_AddItToRedisDB(clientId);
         }
+        cachedClient = null;
     }
     @Override
     public void closeConnection() {
